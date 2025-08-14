@@ -2,7 +2,7 @@ networks:
   innonetwork:
 
 services:
-  postgres:
+  innoslate-postgres:
     image: postgres:15.7
     container_name: postgres
     environment:
@@ -38,13 +38,13 @@ services:
     networks:
       - innonetwork
     volumes:
-      - ./config/server_proxy.xml:/usr/local/tomcat/conf/server.xml:z
+      - ./config/server.xml:/usr/local/tomcat/conf/server.xml:z
     command: ["innoslate", "run"]
     tty: true
     profiles:
       - innoslate-no-port
 
-  nginx:
+  innoslate-nginx:
     image: nginx:mainline-alpine3.22-perl
     container_name: nginx
     networks:

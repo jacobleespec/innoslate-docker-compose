@@ -38,21 +38,24 @@ check() {
 }
 
 read -p "Enter host port: " HOST_PORT
-if ! [[ "$HOST_PORT" =~ ^[0-9]+$ ]] || (( HOST_PORT < 1 || HOST_PORT > 65535 )); then
+while ! [[ "$HOST_PORT" =~ ^[0-9]+$ ]] || (( HOST_PORT < 1 || HOST_PORT > 65535 )); do
   echo "Invalid HOST_PORT number."
-  exit 1
-fi
+  read -p "Enter host port: " HOST_PORT
+done
 DOCKER_COMPOSE_COMMAND="HOST_PORT=$HOST_PORT $DOCKER_COMPOSE_COMMAND"
 
 read -p "Use NGINX? (y/n): " ANSWER
 ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
+while [[ "$ANSWER" != "y" && "$ANSWER" != "n" ]]; do
+  echo "Invalid option: $ANSWER"
+  read -p "Use NGINX? (y/n): " ANSWER
+  ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
+done
+
 if [[ "$ANSWER" == "y" ]]; then
   USE_NGINX=true
-elif [[ "$ANSWER" == "n" ]]; then
-  USE_NGINX=false
 else
-  echo "Invalid option: $ANSWER"
-  exit 1
+  USE_NGINX=false
 fi
 
 FILE_SUFFIX=
@@ -60,11 +63,15 @@ if [[ "$USE_NGINX" == "true" ]]; then
   read -p "Use HTTPS? (y/n): " USE_HTTPS
   USE_HTTPS=${USE_HTTPS,,}
 
+  while [[ "$USE_HTTPS" != "y" && "$USE_HTTPS" != "n" ]]; do
+    echo "Invalid option: $USE_HTTPS"
+    read -p "Use HTTPS? (y/n): " USE_HTTPS
+    USE_HTTPS=${USE_HTTPS,,}
+  done
+
   if [[ "$USE_HTTPS" == "y" ]]; then
     read -p "Enter SSL certificate filename: " SSL_CERTIFICATE_FILE
     read -p "Enter SSL certificate key filename: " SSL_CERTIFICATE_KEY_FILE
-  elif [[ "$USE_HTTPS" != "n" ]]; then
-    exit 1
   fi
   # Verify that the files exist
   if [ -n "$SSL_CERTIFICATE_FILE" ] && [ -n "$SSL_CERTIFICATE_KEY_FILE" ]; then
@@ -79,23 +86,26 @@ DOCKER_COMPOSE_COMMAND="FILE_SUFFIX=${FILE_SUFFIX} $DOCKER_COMPOSE_COMMAND"
 
 read -p "Use Postgres? (y/n): " ANSWER
 ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
+while [[ "$ANSWER" != "y" && "$ANSWER" != "n" ]]; do
+  echo "Invalid option: $ANSWER"
+  read -p "Use Postgres? (y/n): " ANSWER
+  ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
+done
+
 if [[ "$ANSWER" == "y" ]]; then
   USE_POSTGRES=true
-elif [[ "$ANSWER" == "n" ]]; then
-  USE_POSTGRES=false
 else
-  echo "Invalid option: $ANSWER"
-  exit 1
+  USE_POSTGRES=false
 fi
 
 POSTGRES_PASSWORD=
 POSTGRES_DB=
 if [ "$USE_POSTGRES" == "true" ]; then
   read -p "Enter Postgres database name: " POSTGRES_DB
-  if [[ ! "$POSTGRES_DB" =~ ^[a-z0-9_-]+$ ]]; then
+  while [[ ! "$POSTGRES_DB" =~ ^[a-z0-9_-]+$ ]]; do
     echo "Error: Database name must contain only lowercase letters, numbers, underscores, or dashes."
-    exit 1
-  fi
+    read -p "Enter Postgres database name: " POSTGRES_DB
+  done
   read -s -p "Enter Postgres password: " POSTGRES_PASSWORD
 
   echo "Enabling Postgres"
