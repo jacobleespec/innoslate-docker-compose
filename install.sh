@@ -29,12 +29,12 @@ fi
 
 # Check that files exist
 check() {
-  echo "Checking" $1
   local path="./nginx-files/certs/$1"
   if [ ! -f "$path" ]; then
     echo "Missing required file: $path"
-    exit 1
+    return 1
   fi
+  return 0
 }
 
 read -p "Enter host port: " HOST_PORT
@@ -70,16 +70,38 @@ if [[ "$USE_NGINX" == "true" ]]; then
   done
 
   if [[ "$USE_HTTPS" == "y" ]]; then
-    read -p "Enter SSL certificate filename: " SSL_CERTIFICATE_FILE
-    read -p "Enter SSL certificate key filename: " SSL_CERTIFICATE_KEY_FILE
+    # Certificate file
+    while true; do
+      read -p "Enter SSL certificate filename: " SSL_CERTIFICATE_FILE
+      if [ -n "$SSL_CERTIFICATE_FILE" ]; then
+        if check "$SSL_CERTIFICATE_FILE"; then
+          break
+        else
+          echo "Please enter a valid certificate filename."
+        fi
+      else
+        break
+      fi
+    done
+    
+    # Certificate key file
+    while true; do
+      read -p "Enter SSL certificate key filename: " SSL_CERTIFICATE_KEY_FILE
+      if [ -n "$SSL_CERTIFICATE_KEY_FILE" ]; then
+        if check "$SSL_CERTIFICATE_KEY_FILE"; then
+          break
+        else
+          echo "Please enter a valid certificate key filename."
+        fi
+      else
+        break
+      fi
+    done
   fi
-  # Verify that the files exist
+  
   if [ -n "$SSL_CERTIFICATE_FILE" ] && [ -n "$SSL_CERTIFICATE_KEY_FILE" ]; then
-    echo "Checking required files..."
-    check "$SSL_CERTIFICATE_FILE"
-    check "$SSL_CERTIFICATE_KEY_FILE"
     FILE_SUFFIX=_https
-    echo "Files found"
+    echo "All required files found"
   fi
 fi
 DOCKER_COMPOSE_COMMAND="FILE_SUFFIX=${FILE_SUFFIX} $DOCKER_COMPOSE_COMMAND"
