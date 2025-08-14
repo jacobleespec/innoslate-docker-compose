@@ -15,7 +15,7 @@
   <Service name="Catalina">
     <Connector port="8080" protocol="HTTP/1.1"
                connectionTimeout="20000" 
-               proxyPort="443"
+               proxyPort="{PROXYPORT}"
                scheme="https"
                secure="true" />
     <Engine name="Catalina" defaultHost="localhost">

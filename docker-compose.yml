@@ -38,7 +38,7 @@ services:
     networks:
       - innonetwork
     volumes:
-      - ./innoslate-files/server_proxy${FILE_SUFFIX}.xml:/usr/local/tomcat/conf/server.xml:z
+      - ./config/server_proxy.xml:/usr/local/tomcat/conf/server.xml:z
     command: ["innoslate", "run"]
     tty: true
     profiles:

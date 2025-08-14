@@ -1,0 +1,4 @@
+# Default ignored files
+.idea/*
+config/*
+innoslate-docker-compose.iml

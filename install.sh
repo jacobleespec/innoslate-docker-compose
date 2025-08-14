@@ -1,16 +1,13 @@
 #!/bin/bash
 
+set -e
+
 # !!!!NOTE!!!!
 # This is only meant for INSTALLATION. Do not run this
 # after your instance has been installed, it may result
 # in losing data.
 
 DOCKER_COMPOSE_COMMAND="docker compose"
-
-# Load environment variables from .env
-set -a
-source .env
-set +a
 
 error_reported=0
 trap '
@@ -48,7 +45,7 @@ fi
 DOCKER_COMPOSE_COMMAND="HOST_PORT=$HOST_PORT $DOCKER_COMPOSE_COMMAND"
 
 read -p "Use NGINX? (y/n): " ANSWER
-ANSWER=${ANSWER,,}  # convert to lowercase
+ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
 if [[ "$ANSWER" == "y" ]]; then
   USE_NGINX=true
 elif [[ "$ANSWER" == "n" ]]; then
@@ -58,17 +55,7 @@ else
   exit 1
 fi
 
-read -p "Use Postgres? (y/n): " ANSWER
-ANSWER=${ANSWER,,}  # convert to lowercase
-if [[ "$ANSWER" == "y" ]]; then
-  USE_POSTGRES=true
-elif [[ "$ANSWER" == "n" ]]; then
-  USE_POSTGRES=false
-else
-  echo "Invalid option: $ANSWER"
-  exit 1
-fi
-
+FILE_SUFFIX=
 if [[ "$USE_NGINX" == "true" ]]; then
   read -p "Use HTTPS? (y/n): " USE_HTTPS
   USE_HTTPS=${USE_HTTPS,,}
@@ -84,11 +71,25 @@ if [[ "$USE_NGINX" == "true" ]]; then
     echo "Checking required files..."
     check "$SSL_CERTIFICATE_FILE"
     check "$SSL_CERTIFICATE_KEY_FILE"
-    DOCKER_COMPOSE_COMMAND="FILE_SUFFIX=_https $DOCKER_COMPOSE_COMMAND"
+    FILE_SUFFIX=_https
     echo "Files found"
   fi
 fi
+DOCKER_COMPOSE_COMMAND="FILE_SUFFIX=${FILE_SUFFIX} $DOCKER_COMPOSE_COMMAND"
 
+read -p "Use Postgres? (y/n): " ANSWER
+ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
+if [[ "$ANSWER" == "y" ]]; then
+  USE_POSTGRES=true
+elif [[ "$ANSWER" == "n" ]]; then
+  USE_POSTGRES=false
+else
+  echo "Invalid option: $ANSWER"
+  exit 1
+fi
+
+POSTGRES_PASSWORD=
+POSTGRES_DB=
 if [ "$USE_POSTGRES" == "true" ]; then
   read -p "Enter Postgres database name: " POSTGRES_DB
   if [[ ! "$POSTGRES_DB" =~ ^[a-z0-9_-]+$ ]]; then
@@ -98,8 +99,9 @@ if [ "$USE_POSTGRES" == "true" ]; then
   read -s -p "Enter Postgres password: " POSTGRES_PASSWORD
 
   echo "Enabling Postgres"
-  DOCKER_COMPOSE_COMMAND="POSTGRES_DB=$POSTGRES_DB POSTGRES_PASSWORD=$POSTGRES_PASSWORD $DOCKER_COMPOSE_COMMAND --profile postgres"
+  DOCKER_COMPOSE_COMMAND="$DOCKER_COMPOSE_COMMAND --profile postgres"
 fi
+DOCKER_COMPOSE_COMMAND="POSTGRES_DB=$POSTGRES_DB POSTGRES_PASSWORD=$POSTGRES_PASSWORD $DOCKER_COMPOSE_COMMAND"
 
 
 # Use different profiles depending on which service will be using the host port
@@ -109,6 +111,9 @@ if [ "$USE_NGINX" == "true" ]; then
 else
   DOCKER_COMPOSE_COMMAND+=" --profile innoslate"
 fi
+
+mkdir -p ./config
+sed "s/{PROXYPORT}/$HOST_PORT/g" ./innoslate-files/server_proxy${FILE_SUFFIX}.xml > ./config/server.xml
 
 DOCKER_COMPOSE_COMMAND+=" up -d"
 
