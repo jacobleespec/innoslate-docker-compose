@@ -67,17 +67,32 @@ while ! [[ "$HOST_PORT" =~ ^[0-9]+$ ]] || (( HOST_PORT < 1 || HOST_PORT > 65535 
 done
 DOCKER_COMPOSE_COMMAND="HOST_PORT=$HOST_PORT $DOCKER_COMPOSE_COMMAND"
 
-read -p "Use NGINX? (y/n): " ANSWER
+read -p "Use a reverse proxy? (y/n): " ANSWER
 ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
 while [[ "$ANSWER" != "y" && "$ANSWER" != "n" ]]; do
   echo "Invalid option: $ANSWER"
-  read -p "Use NGINX? (y/n): " ANSWER
+  read -p "Use a reverse proxy? (y/n): " ANSWER
   ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
 done
 
 if [[ "$ANSWER" == "y" ]]; then
-  USE_NGINX=true
+  USE_PROXY=true
+  
+  read -p "Use NGINX as the reverse proxy? (y/n): " ANSWER
+  ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
+  while [[ "$ANSWER" != "y" && "$ANSWER" != "n" ]]; do
+    echo "Invalid option: $ANSWER"
+    read -p "Use NGINX as the reverse proxy? (y/n): " ANSWER
+    ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
+  done
+  
+  if [[ "$ANSWER" == "y" ]]; then
+    USE_NGINX=true
+  else
+    USE_NGINX=false
+  fi
 else
+  USE_PROXY=false
   USE_NGINX=false
 fi
 
@@ -161,15 +176,20 @@ DOCKER_COMPOSE_COMMAND="POSTGRES_DB=$POSTGRES_DB POSTGRES_PASSWORD=$POSTGRES_PAS
 
 
 # Use different profiles depending on which service will be using the host port
-if [ "$USE_NGINX" == "true" ]; then
-  echo "Enabling nginx"
-  DOCKER_COMPOSE_COMMAND+=" --profile nginx --profile innoslate-no-port"
+if [ "$USE_PROXY" == "true" ]; then
+  if [ "$USE_NGINX" == "true" ]; then
+    echo "Enabling nginx as reverse proxy"
+    DOCKER_COMPOSE_COMMAND+=" --profile nginx --profile innoslate-no-port"
+  else
+    echo "Enabling external reverse proxy configuration"
+    DOCKER_COMPOSE_COMMAND+=" --profile innoslate-no-port"
+  fi
+  
+  mkdir -p ./config
+  sed "s/{PROXYPORT}/$HOST_PORT/g" ./innoslate-files/server_proxy${FILE_SUFFIX}.xml > ./config/server.xml
 else
   DOCKER_COMPOSE_COMMAND+=" --profile innoslate"
 fi
-
-mkdir -p ./config
-sed "s/{PROXYPORT}/$HOST_PORT/g" ./innoslate-files/server_proxy${FILE_SUFFIX}.xml > ./config/server.xml
 
 DOCKER_COMPOSE_COMMAND+=" up -d"
 
