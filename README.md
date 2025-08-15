@@ -1,35 +1,64 @@
-Innoslate installer that uses Docker Compose, and the following images:
-* [Innoslate](https://hub.docker.com/r/innoslate/innoslate)
-* [Nginx](https://hub.docker.com/_/nginx)
-* [Postgres](https://hub.docker.com/_/postgres)
-
 # Innoslate Docker Installer
-1. `cd` into the directory with `install.sh`
-2. If on MacOS/Linux, `chmod +x ./install.sh`
-3. Run `./install.sh`
 
-# Innoslate Setup
-If a step isn't specified, the default values can be used or the user can supply their own configuration.
+An installer for **Innoslate** using Docker Compose. It uses the following images:
 
-## License
-License given should be either a **legacy license**, or a **docker license**.
+- [Innoslate](https://hub.docker.com/r/innoslate/innoslate)
+- [Nginx](https://hub.docker.com/_/nginx)
+- [Postgres](https://hub.docker.com/_/postgres)
 
-## Database
-If using an external database, you will need to supply your own information.
+---
 
-If using the included postgres container:
+## Prerequisites
 
-**Database Type:** `PostgreSQL`
+- Docker and Docker Compose installed
+- Bash shell (macOS/Linux; on Windows use WSL or Git Bash)
 
-**Database Host:** `postgres`
+---
 
-**Database Port:** *empty*
+## Installation
 
-**Database Name:** Use name that you supplied the docker compose installer
+1. Change to the directory containing `install.sh`:
 
-**Database Username:** `postgres`
+       cd path/to/installer
 
-**Database Password:** Use password that you supplied the docker compose installer
+2. (macOS/Linux) Make the script executable:
 
-## Filesystem Information
-**File Storage Path:** `/usr/local/innoslate/filestore`
+       chmod +x ./install.sh
+
+3. Run the installer:
+
+       ./install.sh
+
+---
+
+## Setup
+
+If a step is not specified, you can use the defaults or provide your own values.
+
+### License
+
+Provide one of the following license types:
+
+- **Legacy license**
+- **Docker license**
+
+### Database
+
+#### Using an External Database
+Supply your own connection details during setup.
+
+#### Using the Included Postgres Container
+Use the following values:
+
+- **Database Type:** `PostgreSQL`
+- **Database Host:** `postgres`
+- **Database Port:** *(leave empty)*
+- **Database Name:** the name you provided to the Docker Compose installer
+- **Database Username:** `postgres`
+- **Database Password:** the password you provided to the Docker Compose installer
+
+---
+
+## Filesystem
+
+- **File Storage Path:** `/usr/local/innoslate/filestore`
