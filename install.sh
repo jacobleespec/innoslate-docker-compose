@@ -2,11 +2,6 @@
 
 set -e
 
-# !!!!NOTE!!!!
-# This is only meant for INSTALLATION. Do not run this
-# after your instance has been installed, it may result
-# in losing data.
-
 DOCKER_COMPOSE_COMMAND="docker compose"
 
 error_reported=0
@@ -18,6 +13,34 @@ trap '
     error_reported=1
   fi
 ' ERR
+
+# Check for existing containers
+CONTAINERS_EXIST=false
+for CONTAINER in "innoslate" "innoslate-postgres" "innoslate-nginx"; do
+  if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
+    CONTAINERS_EXIST=true
+    break
+  fi
+done
+
+if [ "$CONTAINERS_EXIST" = true ]; then
+  echo "WARNING: Removing the previous installation will permanently remove all Innoslate data."
+  echo
+  read -p "Existing Innoslate installation detected. Would you like to remove it? (y/n): " REMOVE_EXISTING
+  REMOVE_EXISTING=$(echo "$REMOVE_EXISTING" | tr '[:upper:]' '[:lower:]') # convert to lowercase
+
+  if [[ "$REMOVE_EXISTING" == "y" ]]; then
+    echo "Removing existing installation..."
+    for CONTAINER in "innoslate" "innoslate-postgres" "innoslate-nginx"; do
+      if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
+        docker rm -f -v "$CONTAINER" || echo "Failed to remove $CONTAINER"
+      fi
+    done
+  else
+    echo "Installation cancelled by user."
+    exit 0
+  fi
+fi
 
 # Remove previous db if it already exists
 if docker volume inspect innoslatedb_volume >/dev/null 2>&1; then
@@ -129,6 +152,7 @@ if [ "$USE_POSTGRES" == "true" ]; then
     read -p "Enter Postgres database name: " POSTGRES_DB
   done
   read -s -p "Enter Postgres password: " POSTGRES_PASSWORD
+  echo
 
   echo "Enabling Postgres"
   DOCKER_COMPOSE_COMMAND="$DOCKER_COMPOSE_COMMAND --profile postgres"
