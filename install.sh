@@ -7,7 +7,7 @@ DOCKER_COMPOSE_COMMAND="docker compose"
 error_reported=0
 trap '
   if [ $error_reported -eq 0 ]; then
-    echo "Script failed with exit code $?"
+    echo -e "\e[31mScript failed with exit code $?\e[0m"
     echo "Press enter to exit..."
     read
     error_reported=1
@@ -24,7 +24,7 @@ for CONTAINER in "innoslate" "innoslate-postgres" "innoslate-nginx"; do
 done
 
 if [ "$CONTAINERS_EXIST" = true ]; then
-  echo "WARNING: Removing the previous installation will permanently remove all Innoslate data."
+  echo -e "\e[33mWARNING: Removing the previous installation will permanently remove all Innoslate data.\e[0m"
   echo
   read -p "Existing Innoslate installation detected. Would you like to remove it? (y/n): " REMOVE_EXISTING
   REMOVE_EXISTING=$(echo "$REMOVE_EXISTING" | tr '[:upper:]' '[:lower:]') # convert to lowercase
@@ -33,7 +33,7 @@ if [ "$CONTAINERS_EXIST" = true ]; then
     echo "Removing existing installation..."
     for CONTAINER in "innoslate" "innoslate-postgres" "innoslate-nginx"; do
       if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
-        docker rm -f -v "$CONTAINER" || echo "Failed to remove $CONTAINER"
+        docker rm -f -v "$CONTAINER" || echo -e "\e[31mFailed to remove $CONTAINER\e[0m"
       fi
     done
   else
@@ -54,47 +54,68 @@ fi
 check() {
   local path="./nginx-files/certs/$1"
   if [ ! -f "$path" ]; then
-    echo "Missing required file: $path"
+    echo -e "\e[31mMissing required file: $path\e[0m"
     return 1
   fi
   return 0
 }
 
-read -p "Enter host port: " HOST_PORT
-while ! [[ "$HOST_PORT" =~ ^[0-9]+$ ]] || (( HOST_PORT < 1 || HOST_PORT > 65535 )); do
-  echo "Invalid HOST_PORT number."
-  read -p "Enter host port: " HOST_PORT
-done
-DOCKER_COMPOSE_COMMAND="HOST_PORT=$HOST_PORT $DOCKER_COMPOSE_COMMAND"
-
 read -p "Use a reverse proxy? (y/n): " ANSWER
 ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
 while [[ "$ANSWER" != "y" && "$ANSWER" != "n" ]]; do
-  echo "Invalid option: $ANSWER"
+  echo -e "\e[31mInvalid option: $ANSWER\e[0m"
   read -p "Use a reverse proxy? (y/n): " ANSWER
   ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
 done
 
 if [[ "$ANSWER" == "y" ]]; then
   USE_PROXY=true
-  
-  read -p "Use NGINX as the reverse proxy? (y/n): " ANSWER
+
+  read -p "Use the included reverse proxy (NGINX)? (y/n): " ANSWER
   ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
   while [[ "$ANSWER" != "y" && "$ANSWER" != "n" ]]; do
-    echo "Invalid option: $ANSWER"
-    read -p "Use NGINX as the reverse proxy? (y/n): " ANSWER
+    echo -e "\e[31mInvalid option: $ANSWER\e[0m"
+    read -p "Use the included reverse proxy (NGINX)? (y/n): " ANSWER
     ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
   done
-  
+
   if [[ "$ANSWER" == "y" ]]; then
     USE_NGINX=true
+    read -p "Enter the port users will be using to connect to Innoslate: " HOST_PORT
+    while ! [[ "$HOST_PORT" =~ ^[0-9]+$ ]] || (( HOST_PORT < 1 || HOST_PORT > 65535 )); do
+      echo -e "\e[31mInvalid port number.\e[0m"
+    read -p "Enter the port users will be using to connect to Innoslate: " HOST_PORT
+    done
+    CONTAINER_PORT="$HOST_PORT"
   else
     USE_NGINX=false
+    read -p "Enter the port users will be using to connect to Innoslate: " HOST_PORT
+    while ! [[ "$HOST_PORT" =~ ^[0-9]+$ ]] || (( HOST_PORT < 1 || HOST_PORT > 65535 )); do
+      echo -e "\e[31mInvalid port number.\e[0m"
+    read -p "Enter the port users will be using to connect to Innoslate: " HOST_PORT
+    done
+
+    echo
+    echo -e "\e[33mWARNING: You must block the following port from external traffic in your firewall so that the only port" \
+         "accessible to users is the reverse proxy port given above.\e[0m"
+    read -p "Enter the port your Innoslate container will be using: " CONTAINER_PORT
+    while ! [[ "$CONTAINER_PORT" =~ ^[0-9]+$ ]] || (( CONTAINER_PORT < 1 || CONTAINER_PORT > 65535 )); do
+      echo -e "\e[31mInvalid port number.\e[0m"
+    read -p "Enter the port your Innoslate container will be using: " CONTAINER_PORT
+    done
   fi
 else
   USE_PROXY=false
   USE_NGINX=false
+  read -p "Enter host port: " HOST_PORT
+  while ! [[ "$HOST_PORT" =~ ^[0-9]+$ ]] || (( HOST_PORT < 1 || HOST_PORT > 65535 )); do
+    echo -e "\e[31mInvalid port number.\e[0m"
+    read -p "Enter host port: " HOST_PORT
+  done
+  CONTAINER_PORT="$HOST_PORT"
 fi
+
+DOCKER_COMPOSE_COMMAND="HOST_PORT=$HOST_PORT CONTAINER_PORT=$CONTAINER_PORT $DOCKER_COMPOSE_COMMAND"
 
 FILE_SUFFIX=
 if [[ "$USE_NGINX" == "true" ]]; then
@@ -102,7 +123,7 @@ if [[ "$USE_NGINX" == "true" ]]; then
   USE_HTTPS=${USE_HTTPS,,}
 
   while [[ "$USE_HTTPS" != "y" && "$USE_HTTPS" != "n" ]]; do
-    echo "Invalid option: $USE_HTTPS"
+    echo -e "\e[31mInvalid option: $USE_HTTPS\e[0m"
     read -p "Use HTTPS? (y/n): " USE_HTTPS
     USE_HTTPS=${USE_HTTPS,,}
   done
@@ -114,8 +135,6 @@ if [[ "$USE_NGINX" == "true" ]]; then
       if [ -n "$SSL_CERTIFICATE_FILE" ]; then
         if check "$SSL_CERTIFICATE_FILE"; then
           break
-        else
-          echo "Please enter a valid certificate filename."
         fi
       else
         break
@@ -128,8 +147,6 @@ if [[ "$USE_NGINX" == "true" ]]; then
       if [ -n "$SSL_CERTIFICATE_KEY_FILE" ]; then
         if check "$SSL_CERTIFICATE_KEY_FILE"; then
           break
-        else
-          echo "Please enter a valid certificate key filename."
         fi
       else
         break
@@ -147,7 +164,7 @@ DOCKER_COMPOSE_COMMAND="FILE_SUFFIX=${FILE_SUFFIX} $DOCKER_COMPOSE_COMMAND"
 read -p "Use Postgres? (y/n): " ANSWER
 ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
 while [[ "$ANSWER" != "y" && "$ANSWER" != "n" ]]; do
-  echo "Invalid option: $ANSWER"
+  echo -e "\e[31mInvalid option: $ANSWER\e[0m"
   read -p "Use Postgres? (y/n): " ANSWER
   ANSWER=$(echo "$ANSWER" | tr '[:upper:]' '[:lower:]') # convert to lowercase
 done
@@ -163,7 +180,7 @@ POSTGRES_DB=
 if [ "$USE_POSTGRES" == "true" ]; then
   read -p "Enter Postgres database name: " POSTGRES_DB
   while [[ ! "$POSTGRES_DB" =~ ^[a-z0-9_-]+$ ]]; do
-    echo "Error: Database name must contain only lowercase letters, numbers, underscores, or dashes."
+    echo -e "\e[31mError: Database name must contain only lowercase letters, numbers, underscores, or dashes.\e[0m"
     read -p "Enter Postgres database name: " POSTGRES_DB
   done
   read -s -p "Enter Postgres password: " POSTGRES_PASSWORD
@@ -182,7 +199,7 @@ if [ "$USE_PROXY" == "true" ]; then
     DOCKER_COMPOSE_COMMAND+=" --profile nginx --profile innoslate-no-port"
   else
     echo "Enabling external reverse proxy configuration"
-    DOCKER_COMPOSE_COMMAND+=" --profile innoslate-no-port"
+    DOCKER_COMPOSE_COMMAND+=" --profile innoslate"
   fi
   
   mkdir -p ./config
