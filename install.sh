@@ -118,7 +118,7 @@ fi
 DOCKER_COMPOSE_COMMAND="HOST_PORT=$HOST_PORT CONTAINER_PORT=$CONTAINER_PORT $DOCKER_COMPOSE_COMMAND"
 
 FILE_SUFFIX=
-if [[ "$USE_NGINX" == "true" ]]; then
+if [[ "$USE_PROXY" == "true" ]]; then
   read -p "Use HTTPS? (y/n): " USE_HTTPS
   USE_HTTPS=${USE_HTTPS,,}
 
@@ -129,34 +129,33 @@ if [[ "$USE_NGINX" == "true" ]]; then
   done
 
   if [[ "$USE_HTTPS" == "y" ]]; then
-    # Certificate file
-    while true; do
-      read -p "Enter SSL certificate filename: " SSL_CERTIFICATE_FILE
-      if [ -n "$SSL_CERTIFICATE_FILE" ]; then
-        if check "$SSL_CERTIFICATE_FILE"; then
+    if [[ "$USE_NGINX" == "true" ]]; then
+      # Certificate file
+      while true; do
+        read -p "Enter SSL certificate filename: " SSL_CERTIFICATE_FILE
+        if [ -n "$SSL_CERTIFICATE_FILE" ]; then
+          if check "$SSL_CERTIFICATE_FILE"; then
+            break
+          fi
+        else
           break
         fi
-      else
-        break
-      fi
-    done
-    
-    # Certificate key file
-    while true; do
-      read -p "Enter SSL certificate key filename: " SSL_CERTIFICATE_KEY_FILE
-      if [ -n "$SSL_CERTIFICATE_KEY_FILE" ]; then
-        if check "$SSL_CERTIFICATE_KEY_FILE"; then
+      done
+
+      # Certificate key file
+      while true; do
+        read -p "Enter SSL certificate key filename: " SSL_CERTIFICATE_KEY_FILE
+        if [ -n "$SSL_CERTIFICATE_KEY_FILE" ]; then
+          if check "$SSL_CERTIFICATE_KEY_FILE"; then
+            break
+          fi
+        else
           break
         fi
-      else
-        break
-      fi
-    done
-  fi
-  
-  if [ -n "$SSL_CERTIFICATE_FILE" ] && [ -n "$SSL_CERTIFICATE_KEY_FILE" ]; then
+      done
+      echo "All required files found"
+    fi
     FILE_SUFFIX=_https
-    echo "All required files found"
   fi
 fi
 DOCKER_COMPOSE_COMMAND="FILE_SUFFIX=${FILE_SUFFIX} $DOCKER_COMPOSE_COMMAND"
@@ -194,14 +193,12 @@ DOCKER_COMPOSE_COMMAND="POSTGRES_DB=$POSTGRES_DB POSTGRES_PASSWORD=$POSTGRES_PAS
 
 # Use different profiles depending on which service will be using the host port
 if [ "$USE_PROXY" == "true" ]; then
+  echo "Configuring Innoslate for reverse proxy"
   if [ "$USE_NGINX" == "true" ]; then
-    echo "Enabling nginx as reverse proxy"
-    DOCKER_COMPOSE_COMMAND+=" --profile nginx --profile innoslate-no-port"
-  else
-    echo "Enabling external reverse proxy configuration"
-    DOCKER_COMPOSE_COMMAND+=" --profile innoslate"
+    DOCKER_COMPOSE_COMMAND+=" --profile nginx"
   fi
-  
+  DOCKER_COMPOSE_COMMAND+=" --profile innoslate-no-port"
+
   mkdir -p ./config
   sed "s/{PROXYPORT}/$HOST_PORT/g" ./innoslate-files/server_proxy${FILE_SUFFIX}.xml > ./config/server.xml
 else
