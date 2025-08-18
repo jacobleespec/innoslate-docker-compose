@@ -26,7 +26,7 @@ services:
     networks:
       - innonetwork
     ports:
-      - "${HOST_PORT}:8080"
+      - "${CONTAINER_PORT}:8080"
     command: ["innoslate", "run"]
     tty: true
     profiles:
@@ -50,7 +50,7 @@ services:
     networks:
       - innonetwork
     ports:
-      - "${HOST_PORT}:8081"
+      - "${CONTAINER_PORT}:8081"
     volumes:
       - ./nginx-files/nginx${FILE_SUFFIX}.conf:/etc/nginx/conf.d/default.conf:z
       - ./nginx-files/certs:/etc/nginx/certs/:z
